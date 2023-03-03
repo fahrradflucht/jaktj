@@ -1,42 +1,13 @@
 import attribute_info { AttributeInfo, UnknownAttributeInfo }
 import field_info { FieldInfo }
 import method_info { MethodInfo }
-
-enum ConstantPoolTag: u8 {
-    Utf8 = 1
-    Integer = 3
-    Float = 4
-    Long = 5
-    Double = 6
-    Class = 7
-    String = 8
-    FieldRef = 9
-    MethodRef = 10
-    InterfaceMethodRef = 11
-    NameAndType = 12
-    MethodHandle = 15
-    MethodType = 16
-    Dynamic = 17
-    InvokeDynamic = 18
-    Module = 19
-    Package = 20
-}
-
-enum ConstantPoolInfo {
-    Utf8(tag: ConstantPoolTag, length: u16, bytes: [u8])
-    Class(tag: ConstantPoolTag, name_index: u16)
-    String(tag: ConstantPoolTag, string_index: u16)
-    FieldRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
-    MethodRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
-    NameAndType(tag: ConstantPoolTag, name_index: u16, descriptor_index: u16)
-}
+import constant_pool { ConstantPool, ConstantPoolInfo, ConstantPoolTag }
 
 struct ClassFile {
     magic: u32 = 0
     minor_version: u16 = 0
     major_version: u16 = 0
-    constant_pool_count: u16 = 0
-    constant_pool: [u16: ConstantPoolInfo]
+    constant_pool: ConstantPool
     access_flags: u16 = 0
     this_class: u16 = 0
     super_class: u16 = 0
@@ -55,15 +26,15 @@ struct ClassFile {
         println("  minor: {}", .minor_version)
         println("  major: {}", .major_version)
         println("  constant_pool: [")
-        for i in 1...constant_pool_count {
-            guard .constant_pool.get(i) is Some(item) else {
-                continue
-            }
+        // TODO: It should be possible to destructure the pair
+        for pair in .constant_pool.iterator() {
+            let index = pair.0
+            let item = pair.1
 
             if item is Utf8(bytes) {
-                println("    {}: ConstantPoolInfo::Utf8({})", i, String::from_utf8(bytes))
+                println("    {}: ConstantPoolInfo::Utf8({})", index, .constant_pool.get_utf8(index))
             } else {
-                println("    {}: {}", i, item)
+                println("    {}: {}", index, item)
             }
         }
         println("  ]")
@@ -158,7 +129,7 @@ class ClassFileParser {
             data
             index: 0
             class_file: ClassFile(
-                constant_pool: [:],
+                constant_pool: ConstantPool(items: [:]),
                 interfaces: [],
                 fields: [],
                 methods: [],
@@ -237,57 +208,58 @@ class ClassFileParser {
     }
 
     private fn parse_constant_pool(mut this) throws {
-        .class_file.constant_pool_count = .take_u16()
-        .class_file.constant_pool.ensure_capacity(
-            (.class_file.constant_pool_count - 1) as! usize
-        )
+        let constant_pool_count = .take_u16()
+        mut constant_pool_items: [u16:ConstantPoolInfo] = [:]
+        constant_pool_items.ensure_capacity((constant_pool_count - 1) as! usize)
 
-        for index in 1...class_file.constant_pool_count {
-            .parse_constant_pool_info(index)
+        for index in 1..constant_pool_count {
+            .parse_constant_pool_info(index, items: constant_pool_items)
         }
+
+        .class_file.constant_pool = ConstantPool(items: constant_pool_items)
     }
 
-    private fn parse_constant_pool_info(mut this, index: u16) throws {
+    private fn parse_constant_pool_info(mut this, index: u16, mut items: [u16:ConstantPoolInfo]) throws {
         let tag = .next()
         match (tag) {
             (ConstantPoolTag::Utf8 as! u8) => {
                 let length = .take_u16()
                 let bytes = .take(length as! usize).to_array()
 
-                .class_file.constant_pool[index] = ConstantPoolInfo::Utf8(
+                items[index] = ConstantPoolInfo::Utf8(
                     tag: ConstantPoolTag::Utf8
                     length
                     bytes
                 )
             }
             (ConstantPoolTag::Class as! u8) => {
-                .class_file.constant_pool[index] = ConstantPoolInfo::Class(
+                items[index] = ConstantPoolInfo::Class(
                     tag: ConstantPoolTag::Class
                     name_index: .take_u16()
                 )
             }
             (ConstantPoolTag::String as! u8) => {
-                .class_file.constant_pool[index] = ConstantPoolInfo::String(
+                items[index] = ConstantPoolInfo::String(
                     tag: ConstantPoolTag::String
                     string_index: .take_u16()
                 )
             }
             (ConstantPoolTag::FieldRef as! u8) => {
-                .class_file.constant_pool[index] = ConstantPoolInfo::FieldRef(
+                items[index] = ConstantPoolInfo::FieldRef(
                     tag: ConstantPoolTag::FieldRef
                     class_index: .take_u16()
                     name_and_type_index: .take_u16()
                 )
             }
             (ConstantPoolTag::MethodRef as! u8) => {
-                .class_file.constant_pool[index] = ConstantPoolInfo::MethodRef(
+                items[index] = ConstantPoolInfo::MethodRef(
                     tag: ConstantPoolTag::MethodRef
                     class_index: .take_u16()
                     name_and_type_index: .take_u16()
                 )
             }
             (ConstantPoolTag::NameAndType as! u8) => {
-                .class_file.constant_pool[index] = ConstantPoolInfo::NameAndType(
+                items[index] = ConstantPoolInfo::NameAndType(
                     tag: ConstantPoolTag::NameAndType
                     name_index: .take_u16()
                     descriptor_index: .take_u16()

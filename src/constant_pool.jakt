@@ -1,0 +1,60 @@
+enum ConstantPoolTag: u8 {
+    Utf8 = 1
+    Integer = 3
+    Float = 4
+    Long = 5
+    Double = 6
+    Class = 7
+    String = 8
+    FieldRef = 9
+    MethodRef = 10
+    InterfaceMethodRef = 11
+    NameAndType = 12
+    MethodHandle = 15
+    MethodType = 16
+    Dynamic = 17
+    InvokeDynamic = 18
+    Module = 19
+    Package = 20
+}
+
+enum ConstantPoolInfo {
+    Utf8(tag: ConstantPoolTag, length: u16, bytes: [u8])
+    Class(tag: ConstantPoolTag, name_index: u16)
+    String(tag: ConstantPoolTag, string_index: u16)
+    FieldRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
+    MethodRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
+    NameAndType(tag: ConstantPoolTag, name_index: u16, descriptor_index: u16)
+}
+
+// FIXME: This should be able to implement IntoIterator
+struct ConstantPool {
+    items: [u16: ConstantPoolInfo]
+
+    fn iterator(this) -> DictionaryIterator<u16, ConstantPoolInfo> {
+        return .items.iterator()
+    }
+
+    fn create(items: [u16: ConstantPoolInfo]) -> ConstantPool {
+        return ConstantPool(items)
+    }
+
+    fn get(this, anon index: u16) -> ConstantPoolInfo? {
+        return .items.get(index)
+    }
+
+    fn get_utf8(this, index: u16) throws -> String? {
+        guard .get(index) is Some(item) else {
+            return None
+        }
+
+        return match item {
+            Utf8(bytes) => {
+                yield Some(String::from_utf8(bytes))
+            }
+            else => {
+                yield None
+            }
+        }
+    }
+}
