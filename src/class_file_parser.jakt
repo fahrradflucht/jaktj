@@ -1,3 +1,7 @@
+import attribute_info { AttributeInfo, UnknownAttributeInfo }
+import field_info { FieldInfo }
+import method_info { MethodInfo }
+
 enum ConstantPoolTag: u8 {
     Utf8 = 1
     Integer = 3
@@ -25,112 +29,6 @@ enum ConstantPoolInfo {
     FieldRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
     MethodRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
     NameAndType(tag: ConstantPoolTag, name_index: u16, descriptor_index: u16)
-}
-
-struct AttributeInfo {
-    attribute_name_index: u16
-    attribute_length: u32
-    info: [u8]
-}
-
-struct FieldInfo {
-    access_flags: u16
-    name_index: u16
-    descriptor_index: u16
-    attributes_count: u16
-    attributes: [AttributeInfo]
-
-    fn is_public(this) -> bool {
-        return (.access_flags & 0x0001) != 0
-    }
-
-    fn is_private(this) -> bool {
-        return (.access_flags & 0x0002) != 0
-    }
-
-    fn is_protected(this) -> bool {
-        return (.access_flags & 0x0004) != 0
-    }
-    
-    fn is_static(this) -> bool {
-        return (.access_flags & 0x0008) != 0
-    }
-
-    fn is_final(this) -> bool {
-        return (.access_flags & 0x0010) != 0
-    }
-
-    fn is_volatile(this) -> bool {
-        return (.access_flags & 0x0040) != 0
-    }
-
-    fn is_transient(this) -> bool {
-        return (.access_flags & 0x0080) != 0
-    }
-
-    fn is_synthetic(this) -> bool {
-        return (.access_flags & 0x1000) != 0
-    }
-
-    fn is_enum(this) -> bool {
-        return (.access_flags & 0x4000) != 0
-    }
-}
-
-struct MethodInfo {
-    access_flags: u16
-    name_index: u16
-    descriptor_index: u16
-    attributes_count: u16
-    attributes: [AttributeInfo]
-
-    fn is_public(this) -> bool {
-        return (.access_flags & 0x0001) != 0
-    }
-
-    fn is_private(this) -> bool {
-        return (.access_flags & 0x0002) != 0
-    }
-
-    fn is_protected(this) -> bool {
-        return (.access_flags & 0x0004) != 0
-    }
-
-    fn is_static(this) -> bool {
-        return (.access_flags & 0x0008) != 0
-    }
-
-    fn is_final(this) -> bool {
-        return (.access_flags & 0x0010) != 0
-    }
-
-    fn is_synchronized(this) -> bool {
-        return (.access_flags & 0x0020) != 0
-    }
-
-    fn is_bridge(this) -> bool {
-        return (.access_flags & 0x0040) != 0
-    }
-
-    fn is_varargs(this) -> bool {
-        return (.access_flags & 0x0080) != 0
-    }
-
-    fn is_native(this) -> bool {
-        return (.access_flags & 0x0100) != 0
-    }
-
-    fn is_abstract(this) -> bool {
-        return (.access_flags & 0x0400) != 0
-    }
-
-    fn is_strict(this) -> bool {
-        return (.access_flags & 0x0800) != 0
-    }
-
-    fn is_synthetic(this) -> bool {
-        return (.access_flags & 0x1000) != 0
-    }
 }
 
 struct ClassFile {
@@ -199,7 +97,12 @@ struct ClassFile {
         println("  ]")
         println("  attributes: [")
         for i in 0...attributes_count {
-            println("    {}", .attributes[i])
+            let attribute = .attributes[i]
+            if attribute is UnknownAttributeInfo {
+                println("    {}: {}", i, attribute as! UnknownAttributeInfo)
+            } else {
+                println("    {}: {}", i, attribute)
+            }
         }
         println("  ]")
         println(")")
@@ -514,7 +417,7 @@ class ClassFileParser {
         let attribute_name_index = .take_u16()
         let attribute_length = .take_u32()
 
-        mut attribute = AttributeInfo(
+        mut attribute: AttributeInfo = UnknownAttributeInfo(
             attribute_name_index
             attribute_length
             info: .take(attribute_length as! usize).to_array()

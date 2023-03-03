@@ -1,0 +1,45 @@
+import attribute_info { AttributeInfo }
+
+struct FieldInfo {
+    access_flags: u16
+    name_index: u16
+    descriptor_index: u16
+    attributes_count: u16
+    attributes: [AttributeInfo]
+
+    fn is_public(this) -> bool {
+        return (.access_flags & 0x0001) != 0
+    }
+
+    fn is_private(this) -> bool {
+        return (.access_flags & 0x0002) != 0
+    }
+
+    fn is_protected(this) -> bool {
+        return (.access_flags & 0x0004) != 0
+    }
+    
+    fn is_static(this) -> bool {
+        return (.access_flags & 0x0008) != 0
+    }
+
+    fn is_final(this) -> bool {
+        return (.access_flags & 0x0010) != 0
+    }
+
+    fn is_volatile(this) -> bool {
+        return (.access_flags & 0x0040) != 0
+    }
+
+    fn is_transient(this) -> bool {
+        return (.access_flags & 0x0080) != 0
+    }
+
+    fn is_synthetic(this) -> bool {
+        return (.access_flags & 0x1000) != 0
+    }
+
+    fn is_enum(this) -> bool {
+        return (.access_flags & 0x4000) != 0
+    }
+}

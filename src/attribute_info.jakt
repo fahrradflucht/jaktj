@@ -1,0 +1,8 @@
+class AttributeInfo {
+    public attribute_name_index: u16
+    public attribute_length: u32
+}
+
+class UnknownAttributeInfo: AttributeInfo {
+    public info: [u8]
+}

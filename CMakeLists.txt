@@ -9,5 +9,8 @@ find_package(Jakt REQUIRED)
 add_jakt_executable(jaktj
    MAIN_SOURCE src/main.jakt
    MODULE_SOURCES
-     src/class_file_parser.jakt
+      src/attribute_info.jakt
+      src/class_file_parser.jakt
+      src/field_info.jakt
+      src/method_info.jakt
 )
