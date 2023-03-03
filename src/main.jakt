@@ -1,0 +1,21 @@
+import class_file_parser { ClassFileParser }
+
+fn main(args: [String]) throws -> c_int {
+    if args.size() < 2 {
+        println("Usage: {} [<class file>]", args[0])
+        return 1
+    }
+
+    for arg in args[1..] {
+        mut file = File::open_for_reading(arg)
+
+        let data = file.read_all()
+
+        mut parser = ClassFileParser::create(data)
+        let class_file = parser.parse()
+
+        class_file.pretty_print()
+    }
+
+    return 0
+}

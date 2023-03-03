@@ -1,0 +1,525 @@
+enum ConstantPoolTag: u8 {
+    Utf8 = 1
+    Integer = 3
+    Float = 4
+    Long = 5
+    Double = 6
+    Class = 7
+    String = 8
+    FieldRef = 9
+    MethodRef = 10
+    InterfaceMethodRef = 11
+    NameAndType = 12
+    MethodHandle = 15
+    MethodType = 16
+    Dynamic = 17
+    InvokeDynamic = 18
+    Module = 19
+    Package = 20
+}
+
+enum ConstantPoolInfo {
+    Utf8(tag: ConstantPoolTag, length: u16, bytes: [u8])
+    Class(tag: ConstantPoolTag, name_index: u16)
+    String(tag: ConstantPoolTag, string_index: u16)
+    FieldRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
+    MethodRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
+    NameAndType(tag: ConstantPoolTag, name_index: u16, descriptor_index: u16)
+}
+
+struct AttributeInfo {
+    attribute_name_index: u16
+    attribute_length: u32
+    info: [u8]
+}
+
+struct FieldInfo {
+    access_flags: u16
+    name_index: u16
+    descriptor_index: u16
+    attributes_count: u16
+    attributes: [AttributeInfo]
+
+    fn is_public(this) -> bool {
+        return (.access_flags & 0x0001) != 0
+    }
+
+    fn is_private(this) -> bool {
+        return (.access_flags & 0x0002) != 0
+    }
+
+    fn is_protected(this) -> bool {
+        return (.access_flags & 0x0004) != 0
+    }
+    
+    fn is_static(this) -> bool {
+        return (.access_flags & 0x0008) != 0
+    }
+
+    fn is_final(this) -> bool {
+        return (.access_flags & 0x0010) != 0
+    }
+
+    fn is_volatile(this) -> bool {
+        return (.access_flags & 0x0040) != 0
+    }
+
+    fn is_transient(this) -> bool {
+        return (.access_flags & 0x0080) != 0
+    }
+
+    fn is_synthetic(this) -> bool {
+        return (.access_flags & 0x1000) != 0
+    }
+
+    fn is_enum(this) -> bool {
+        return (.access_flags & 0x4000) != 0
+    }
+}
+
+struct MethodInfo {
+    access_flags: u16
+    name_index: u16
+    descriptor_index: u16
+    attributes_count: u16
+    attributes: [AttributeInfo]
+
+    fn is_public(this) -> bool {
+        return (.access_flags & 0x0001) != 0
+    }
+
+    fn is_private(this) -> bool {
+        return (.access_flags & 0x0002) != 0
+    }
+
+    fn is_protected(this) -> bool {
+        return (.access_flags & 0x0004) != 0
+    }
+
+    fn is_static(this) -> bool {
+        return (.access_flags & 0x0008) != 0
+    }
+
+    fn is_final(this) -> bool {
+        return (.access_flags & 0x0010) != 0
+    }
+
+    fn is_synchronized(this) -> bool {
+        return (.access_flags & 0x0020) != 0
+    }
+
+    fn is_bridge(this) -> bool {
+        return (.access_flags & 0x0040) != 0
+    }
+
+    fn is_varargs(this) -> bool {
+        return (.access_flags & 0x0080) != 0
+    }
+
+    fn is_native(this) -> bool {
+        return (.access_flags & 0x0100) != 0
+    }
+
+    fn is_abstract(this) -> bool {
+        return (.access_flags & 0x0400) != 0
+    }
+
+    fn is_strict(this) -> bool {
+        return (.access_flags & 0x0800) != 0
+    }
+
+    fn is_synthetic(this) -> bool {
+        return (.access_flags & 0x1000) != 0
+    }
+}
+
+struct ClassFile {
+    magic: u32 = 0
+    minor_version: u16 = 0
+    major_version: u16 = 0
+    constant_pool_count: u16 = 0
+    constant_pool: [u16: ConstantPoolInfo]
+    access_flags: u16 = 0
+    this_class: u16 = 0
+    super_class: u16 = 0
+    interfaces_count: u16 = 0
+    interfaces: [u16]
+    fields_count: u16 = 0
+    fields: [FieldInfo]
+    methods_count: u16 = 0
+    methods: [MethodInfo]
+    attributes_count: u16 = 0
+    attributes: [AttributeInfo]
+
+    fn pretty_print(this) throws {
+        println("ClassFile(")
+        println("  magic: 0x{:02x}", .magic)
+        println("  minor: {}", .minor_version)
+        println("  major: {}", .major_version)
+        println("  constant_pool: [")
+        for i in 1...constant_pool_count {
+            guard .constant_pool.get(i) is Some(item) else {
+                continue
+            }
+
+            if item is Utf8(bytes) {
+                println("    {}: ConstantPoolInfo::Utf8({})", i, String::from_utf8(bytes))
+            } else {
+                println("    {}: {}", i, item)
+            }
+        }
+        println("  ]")
+        println("  access_flags: 0x{:02x} [", .access_flags)
+        println("    is_public: {}", .is_public())
+        println("    is_final: {}", .is_final())
+        println("    is_super: {}", .is_super())
+        println("    is_interface: {}", .is_interface())
+        println("    is_abstract: {}", .is_abstract())
+        println("    is_synthetic: {}", .is_synthetic())
+        println("    is_annotation: {}", .is_annotation())
+        println("    is_enum: {}", .is_enum())
+        println("    is_module: {}", .is_module())
+        println("  ]")
+        println("  this_class: {}", .this_class)
+        println("  super_class: {}", .super_class)
+        println("  interfaces: [")
+        for i in 0...interfaces_count {
+            println("    {}", .interfaces[i])
+        }
+        println("  ]")
+        println("  fields: [")
+        for i in 0...fields_count {
+            println("    {}", .fields[i])
+        }
+        println("  ]")
+        println("  methods: [")
+        for i in 0...methods_count {
+            println("    {}", .methods[i])
+        }
+        println("  ]")
+        println("  attributes: [")
+        for i in 0...attributes_count {
+            println("    {}", .attributes[i])
+        }
+        println("  ]")
+        println(")")
+    }
+
+    fn is_public(this) -> bool {
+        return (.access_flags & 0x0001) != 0
+    }
+
+    fn is_final(this) -> bool {
+        return (.access_flags & 0x0010) != 0
+    }
+
+    fn is_super(this) -> bool {
+        return (.access_flags & 0x0020) != 0
+    }
+    
+    fn is_interface(this) -> bool {
+        return (.access_flags & 0x0200) != 0
+    }
+
+    fn is_abstract(this) -> bool {
+        return (.access_flags & 0x0400) != 0
+    }
+
+    fn is_synthetic(this) -> bool {
+        return (.access_flags & 0x1000) != 0
+    }
+
+    fn is_annotation(this) -> bool {
+        return (.access_flags & 0x2000) != 0
+    }
+
+    fn is_enum(this) -> bool {
+        return (.access_flags & 0x4000) != 0
+    }
+
+    fn is_module(this) -> bool {
+        return (.access_flags & 0x8000) != 0
+    }
+}
+
+class ClassFileParser {
+    comptime MAGIC() => 0xCAFEBABEu32
+    comptime MAX_SUPPORTED_MAJOR_VERSION() => 61u16 // Java 17
+
+    data: [u8]
+    index: usize
+    class_file: ClassFile
+
+    public fn create(data: [u8]) throws -> ClassFileParser {
+        return ClassFileParser(
+            data
+            index: 0
+            class_file: ClassFile(
+                constant_pool: [:],
+                interfaces: [],
+                fields: [],
+                methods: [],
+                attributes: [],
+            )
+        )
+    }
+
+    public fn parse(mut this) throws -> ClassFile {
+        .parse_magic()
+        .parse_version()
+        .parse_constant_pool()
+        .parse_access_flags()
+        .parse_this_class()
+        .parse_super_class()
+        .parse_interfaces()
+        .parse_fields()
+        .parse_methods()
+        .parse_class_attributes()
+
+        return .class_file
+    }
+
+    private fn next(mut this) throws -> u8 {
+        if .index >= .data.size() {
+            throw Error::from_string_literal("Unexpected end of class file")
+        }
+
+        let result = .data[.index++]
+        return result
+    }
+
+    private fn take(mut this, anon size: usize) throws -> ArraySlice<u8> {
+        let result = .data[.index..(.index + size)]
+        .index += size
+        return result
+    }
+
+    private fn take_u16(mut this) throws -> u16 {
+        let bytes = .take(2)
+
+        mut result: u16 = 0
+        for i in 0..bytes.size() {
+            result = result << 8 | bytes[i]
+        }
+
+        return result
+    }
+
+    private fn take_u32(mut this) throws -> u32 {
+        let bytes = .take(4)
+
+        mut result: u32 = 0
+        for i in 0..bytes.size() {
+            result = result << 8 | bytes[i]
+        }
+
+        return result
+    }
+
+    private fn parse_magic(mut this) throws {
+        .class_file.magic = .take_u32()
+
+        if .class_file.magic != MAGIC() {
+            throw Error::from_string_literal("Not a class file")
+        }
+    }
+
+    private fn parse_version(mut this) throws {
+        .class_file.minor_version = .take_u16()
+        .class_file.major_version = .take_u16()
+
+        if .class_file.major_version > MAX_SUPPORTED_MAJOR_VERSION() {
+            throw Error::from_string_literal("Unsupported class file version")
+        }
+    }
+
+    private fn parse_constant_pool(mut this) throws {
+        .class_file.constant_pool_count = .take_u16()
+        .class_file.constant_pool.ensure_capacity(
+            (.class_file.constant_pool_count - 1) as! usize
+        )
+
+        for index in 1...class_file.constant_pool_count {
+            .parse_constant_pool_info(index)
+        }
+    }
+
+    private fn parse_constant_pool_info(mut this, index: u16) throws {
+        let tag = .next()
+        match (tag) {
+            (ConstantPoolTag::Utf8 as! u8) => {
+                let length = .take_u16()
+                let bytes = .take(length as! usize).to_array()
+
+                .class_file.constant_pool[index] = ConstantPoolInfo::Utf8(
+                    tag: ConstantPoolTag::Utf8
+                    length
+                    bytes
+                )
+            }
+            (ConstantPoolTag::Class as! u8) => {
+                .class_file.constant_pool[index] = ConstantPoolInfo::Class(
+                    tag: ConstantPoolTag::Class
+                    name_index: .take_u16()
+                )
+            }
+            (ConstantPoolTag::String as! u8) => {
+                .class_file.constant_pool[index] = ConstantPoolInfo::String(
+                    tag: ConstantPoolTag::String
+                    string_index: .take_u16()
+                )
+            }
+            (ConstantPoolTag::FieldRef as! u8) => {
+                .class_file.constant_pool[index] = ConstantPoolInfo::FieldRef(
+                    tag: ConstantPoolTag::FieldRef
+                    class_index: .take_u16()
+                    name_and_type_index: .take_u16()
+                )
+            }
+            (ConstantPoolTag::MethodRef as! u8) => {
+                .class_file.constant_pool[index] = ConstantPoolInfo::MethodRef(
+                    tag: ConstantPoolTag::MethodRef
+                    class_index: .take_u16()
+                    name_and_type_index: .take_u16()
+                )
+            }
+            (ConstantPoolTag::NameAndType as! u8) => {
+                .class_file.constant_pool[index] = ConstantPoolInfo::NameAndType(
+                    tag: ConstantPoolTag::NameAndType
+                    name_index: .take_u16()
+                    descriptor_index: .take_u16()
+                )
+            }
+            else => {
+                eprintln("Unsupported constant pool tag: {}", tag)
+                throw Error::from_string_literal("Unsupported constant pool tag")
+            }
+        }
+    }
+
+    private fn parse_access_flags(mut this) throws {
+        .class_file.access_flags = .take_u16()
+    }
+
+    private fn parse_this_class(mut this) throws {
+        .class_file.this_class = .take_u16()
+
+        guard .class_file.constant_pool.get(.class_file.this_class) is Some (this_class) else {
+            throw Error::from_string_literal("Invalid this class index")
+        }
+
+        if not this_class is Class {
+            throw Error::from_string_literal("Invalid this class index")
+        }
+    }
+
+    private fn parse_super_class(mut this) throws {
+        .class_file.super_class = .take_u16()
+
+        guard .class_file.constant_pool.get(.class_file.super_class) is Some (super_class) else {
+            if .class_file.super_class != 0 {
+                throw Error::from_string_literal("Invalid super class index")
+            }
+
+            return
+        }
+
+        if not super_class is Class {
+            throw Error::from_string_literal("Invalid super class index")
+        }
+    }
+
+    fn parse_interfaces(mut this) throws {
+        .class_file.interfaces_count = .take_u16()
+        .class_file.interfaces = [0; .class_file.interfaces_count]
+
+        for index in 0...class_file.interfaces_count {
+            .parse_interface(index)
+        }
+    }
+
+    fn parse_interface(mut this, index: u16) throws {
+        .class_file.interfaces[index] = .take_u16()
+
+        guard .class_file.constant_pool.get(.class_file.interfaces[index]) is Some (interface) else {
+            throw Error::from_string_literal("Invalid interface index")
+        }
+
+        if not interface is Class {
+            throw Error::from_string_literal("Invalid interface index")
+        }
+    }
+
+    fn parse_fields(mut this) throws {
+        .class_file.fields_count = .take_u16()
+        .class_file.fields.ensure_capacity(.class_file.fields_count as! usize)
+
+        for index in 0...class_file.fields_count {
+            .parse_field()
+        }
+    }
+
+    fn parse_field(mut this) throws {
+        let field = FieldInfo(
+            access_flags: .take_u16()
+            name_index: .take_u16()
+            descriptor_index: .take_u16()
+            attributes_count: .take_u16()
+            attributes: []
+        )
+        .parse_attributes(attributes: field.attributes, count: field.attributes_count)
+
+        .class_file.fields.push(field)
+    }
+
+    fn parse_methods(mut this) throws {
+        .class_file.methods_count = .take_u16()
+        .class_file.methods.ensure_capacity(.class_file.methods_count as! usize)
+
+        for index in 0...class_file.methods_count {
+            .parse_method()
+        }
+    }
+
+    fn parse_method(mut this) throws {
+        let method = MethodInfo(
+            access_flags: .take_u16()
+            name_index: .take_u16()
+            descriptor_index: .take_u16()
+            attributes_count: .take_u16()
+            attributes: []
+        )
+        .parse_attributes(attributes: method.attributes, count: method.attributes_count)
+
+        .class_file.methods.push(method)
+    }
+
+    fn parse_class_attributes(mut this) throws {
+        .class_file.attributes_count = .take_u16()
+        .parse_attributes(
+            attributes: .class_file.attributes
+            count: .class_file.attributes_count
+        )
+    }
+
+    fn parse_attributes(mut this, mut attributes: [AttributeInfo], count: u16) throws {
+        attributes.ensure_capacity(count as! usize)
+
+        for index in 0..count {
+            .parse_attribute(attributes)
+        }
+    }
+
+    fn parse_attribute(mut this, mut attributes: [AttributeInfo]) throws {
+        let attribute_name_index = .take_u16()
+        let attribute_length = .take_u32()
+
+        mut attribute = AttributeInfo(
+            attribute_name_index
+            attribute_length
+            info: .take(attribute_length as! usize).to_array()
+        )
+
+        attributes.push(attribute)
+    }
+}
