@@ -11,6 +11,7 @@ add_jakt_executable(jaktj
    MODULE_SOURCES
       src/attribute_info.jakt
       src/class_file_parser.jakt
+      src/class_file_pretty_formatter.jakt
       src/constant_pool.jakt
       src/field_info.jakt
       src/method_info.jakt

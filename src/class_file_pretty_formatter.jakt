@@ -1,0 +1,286 @@
+import attribute_info { AttributeInfo }
+import class_file_parser { ClassFile }
+import constant_pool { ConstantPoolInfo, MethodDescriptor }
+import field_info { FieldInfo }
+import method_info { MethodInfo }
+
+struct ClassFilePrettyFormatter {
+    class_file: ClassFile
+    builder: StringBuilder
+    indent: usize = 0
+
+    fn create(class_file: ClassFile) throws -> ClassFilePrettyFormatter {
+        return ClassFilePrettyFormatter(
+            class_file: class_file,
+            builder: StringBuilder::create()
+        )
+    }
+
+    fn format(mut this) throws -> String {
+        .format_class_file()
+
+        return .builder.to_string()
+    }
+
+    fn format_class_file(mut this) throws {
+        .append("ClassFile(\n")
+        .indent += 2
+        defer { 
+            .indent -= 2
+            .append(")\n")
+        }
+
+        .format_magic()
+        .format_version()
+        .format_constant_pool()
+        .format_class_access_flags()
+        .format_this_class()
+        .format_super_class()
+        .format_interfaces()
+        .format_fields()
+        .format_methods()
+        .format_attributes(attributes: .class_file.attributes)
+    }
+
+    private fn format_magic(mut this) throws {
+        .append(format("Magic: 0x{:08x}\n", .class_file.magic))
+    }
+
+    private fn format_version(mut this) throws {
+        .append(format("Version: {}.{}\n", .class_file.major_version, .class_file.minor_version))
+    }
+
+    private fn format_constant_pool(mut this) throws {
+        .append("constant_pool: [\n",)
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for pair in .class_file.constant_pool.iterator() {
+            .format_constant_pool_item(index: pair.0, item: pair.1) 
+        }
+    }
+
+    private fn format_constant_pool_item(mut this, index: u16, item: ConstantPoolInfo) throws {
+        match item {
+            Utf8(bytes) => {
+                let utf8 = .class_file.constant_pool.get_utf8(index)!
+                .append(format("{}:\t ConstantPoolInfo::Utf8({})\n", index, utf8))
+            }
+            else => {
+                .append(format("{}:\t {}\n", index, item))
+            }
+        }
+    }
+
+    private fn format_class_access_flags(mut this) throws {
+        .append(format("access_flags: 0x{:04x} [\n", .class_file.access_flags))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        .append(format("is_public: {}\n", .class_file.is_public()))
+        .append(format("is_final: {}\n", .class_file.is_final()))
+        .append(format("is_super: {}\n", .class_file.is_super()))
+        .append(format("is_interface: {}\n", .class_file.is_interface()))
+        .append(format("is_abstract: {}\n", .class_file.is_abstract()))
+        .append(format("is_synthetic: {}\n", .class_file.is_synthetic()))
+        .append(format("is_annotation: {}\n", .class_file.is_annotation()))
+        .append(format("is_enum: {}\n", .class_file.is_enum()))
+        .append(format("is_module: {}\n", .class_file.is_module()))
+    }
+
+    private fn format_this_class(mut this) throws {
+        let class_constant = .class_file.constant_pool.get_class(.class_file.this_class)!
+        .append(format("this_class: {}\n", class_constant))
+    }
+
+    private fn format_super_class(mut this) throws {
+        let class_constant = .class_file.constant_pool.get_class(.class_file.super_class)!
+        .append(format("super_class: {}\n", class_constant))
+    }
+
+    private fn format_interfaces(mut this) throws {
+        .append("interfaces: [\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for interface in .class_file.interfaces {
+            let class_constant = .class_file.constant_pool.get_class(interface)!
+            .append(format("{}\n", class_constant))
+        }
+    }
+
+    private fn format_fields(mut this) throws {
+        .append("fields: [\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for field in .class_file.fields {
+            .format_field(field)
+        }
+    }
+
+    private fn format_field(mut this, field: FieldInfo) throws {
+        .append(format("Field(\n"))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append(")\n")
+        }
+
+        .append(format("name: {}\n", .class_file.constant_pool.get_utf8(field.name_index)!))
+        .format_field_access_flags(field)
+        .format_field_descriptor(field)
+        .format_attributes(attributes: field.attributes)
+    }
+
+    private fn format_field_access_flags(mut this, field: FieldInfo) throws {
+        .append(format("access_flags: 0x{:04x} [\n", field.access_flags))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        .append(format("is_public: {}\n", field.is_public()))
+        .append(format("is_private: {}\n", field.is_private()))
+        .append(format("is_protected: {}\n", field.is_protected()))
+        .append(format("is_static: {}\n", field.is_static()))
+        .append(format("is_final: {}\n", field.is_final()))
+        .append(format("is_volatile: {}\n", field.is_volatile()))
+        .append(format("is_transient: {}\n", field.is_transient()))
+        .append(format("is_synthetic: {}\n", field.is_synthetic()))
+        .append(format("is_enum: {}\n", field.is_enum()))
+    }
+
+    private fn format_field_descriptor(mut this, field: FieldInfo) throws {
+        .append(
+            format(
+                "descriptor: {}\n"
+                .class_file.constant_pool.get_field_descriptor(index: field.descriptor_index)
+            )
+        )
+    }
+
+    private fn format_methods(mut this) throws {
+        .append("methods: [\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for method in .class_file.methods {
+            .format_method(method)
+        }
+    }
+
+    private fn format_method(mut this, method: MethodInfo) throws {
+        .append(format("Method(\n"))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append(")\n")
+        }
+
+        .append(format("name: {}\n", .class_file.constant_pool.get_utf8(method.name_index)!))
+        .format_method_access_flags(method)
+        .format_method_descriptor(method)
+        .format_attributes(attributes: method.attributes)
+    }
+
+    private fn format_method_descriptor(mut this, method: MethodInfo) throws {
+        .append("descriptor: MethodDescriptor(\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append(")\n")
+        }
+
+        let descriptor = .class_file.constant_pool.get_method_descriptor(index: method.descriptor_index)!
+        .format_method_descriptor_parameters(descriptor)
+        .append(format("return_descriptor: {}\n", descriptor.return_descriptor))
+        .append(format("term: {}\n", descriptor.term))
+    }
+
+    private fn format_method_descriptor_parameters(mut this, descriptor: MethodDescriptor) throws {
+        .append("parameters: [\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for parameter_type in descriptor.parameters {
+            .append(format("{:#}\n", parameter_type))
+        }
+    }
+
+    private fn format_method_access_flags(mut this, method: MethodInfo) throws {
+        .append(format("access_flags: 0x{:04x} [\n", method.access_flags))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        .append(format("is_public: {}\n", method.is_public()))
+        .append(format("is_private: {}\n", method.is_private()))
+        .append(format("is_protected: {}\n", method.is_protected()))
+        .append(format("is_static: {}\n", method.is_static()))
+        .append(format("is_final: {}\n", method.is_final()))
+        .append(format("is_synchronized: {}\n", method.is_synchronized()))
+        .append(format("is_bridge: {}\n", method.is_bridge()))
+        .append(format("is_varargs: {}\n", method.is_varargs()))
+        .append(format("is_native: {}\n", method.is_native()))
+        .append(format("is_abstract: {}\n", method.is_abstract()))
+        .append(format("is_strict: {}\n", method.is_strict()))
+        .append(format("is_synthetic: {}\n", method.is_synthetic()))
+    }
+
+    private fn format_attributes(mut this, attributes: [AttributeInfo]) throws {
+        .append("attributes: [\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for attribute in attributes {
+            .format_attribute(attribute)
+        }
+    }
+
+    private fn format_attribute(mut this, attribute: AttributeInfo) throws {
+        .append(format("Attribute(\n"))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append(")\n")
+        }
+
+        .append(format("name: {}\n", .class_file.constant_pool.get_utf8(attribute.attribute_name_index)!))
+    }
+
+    private fn append(mut this, anon string: String) throws {
+        let lines = string.split('\n' as! c_char)
+        for line in lines {
+            .builder.append(format("{}{}\n", indentation(.indent), line))
+        }
+    }
+
+    private fn indentation(anon count: usize) -> String {
+        return String::repeated(character: (b' ' as! c_char), count)
+    }
+}

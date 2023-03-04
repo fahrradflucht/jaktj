@@ -27,7 +27,87 @@ enum ConstantPoolInfo {
     NameAndType(tag: ConstantPoolTag, name_index: u16, descriptor_index: u16)
 }
 
-// FIXME: This should be able to implement IntoIterator
+struct ClassConstant {
+    name: String
+}
+
+boxed enum FieldType {
+    Int(term: String)
+    Array(type: FieldType, term: String)
+    Reference(name: String, term: String)
+
+    fn from_string(anon string: String) throws -> FieldType {
+        guard string.length() > 0 else {
+            throw Error::from_string_literal("Invalid field type")
+        }
+
+        if string_after_prefix(string, prefix: "[") is Some(type_string) {
+            return FieldType::Array(
+                type: FieldType::from_string(type_string),
+                term: string
+            )
+        }
+
+        if string_after_prefix(string, prefix: "L") is Some(name) {
+            return FieldType::Reference(name: name, term: string)
+        }
+
+        return match string {
+            "I" => Int(term: string)
+            else => {
+                eprintln("Unimplemented field type: {}", string)
+                throw Error::from_string_literal("Unimplemented field type")
+            }
+        }
+    }
+}
+
+enum ReturnDescriptor {
+    Field(FieldType)
+    Void
+}
+
+struct FieldDescriptor {
+    type: FieldType
+
+    fn from_string(anon string: String) throws -> FieldDescriptor {
+        return FieldDescriptor(type: FieldType::from_string(string))
+    }
+}
+
+struct MethodDescriptor {
+    parameters: [FieldType]
+    return_descriptor: ReturnDescriptor
+    term: String
+
+    fn from_string(anon term: String) throws -> MethodDescriptor {
+        guard string_after_prefix(term, prefix: "(") is Some(without_open_paren) else {
+            throw Error::from_string_literal("Invalid method descriptor")
+        }
+
+        mut parts = without_open_paren.split(')' as! c_char)
+        guard parts.size() <= 2 else {
+            throw Error::from_string_literal("Invalid method descriptor")
+        }
+
+        let return_term = parts.pop()!
+        let return_descriptor = match return_term {
+            "V" => ReturnDescriptor::Void
+            else => ReturnDescriptor::Field(FieldType::from_string(return_term))
+        }
+
+        mut parameters: [FieldType] = []
+        if parts.size() > 0 {
+            let parameter_terms = parts[0].split(';' as! c_char)
+            for parameter_term in parameter_terms {
+                parameters.push(FieldType::from_string(parameter_term))
+            }
+        }
+
+        return MethodDescriptor(parameters, return_descriptor, term)
+    }
+}
+
 struct ConstantPool {
     items: [u16: ConstantPoolInfo]
 
@@ -43,18 +123,58 @@ struct ConstantPool {
         return .items.get(index)
     }
 
-    fn get_utf8(this, index: u16) throws -> String? {
+    fn get_utf8(this, anon index: u16) throws -> String? {
         guard .get(index) is Some(item) else {
             return None
         }
 
-        return match item {
-            Utf8(bytes) => {
-                yield Some(String::from_utf8(bytes))
-            }
-            else => {
-                yield None
-            }
+        guard item is Utf8(bytes) else {
+            return None
         }
+
+        return Some(String::from_utf8(bytes))
     }
+
+    fn get_class(this, anon index: u16) throws -> ClassConstant? {
+        guard .get(index) is Some(item) else {
+            return None
+        }
+
+        guard item is Class(name_index) else {
+            return None
+        }
+
+        guard .get_utf8(name_index) is Some(name) else {
+            throw Error::from_string_literal("Invalid class name_index")
+        }
+
+        return Some(ClassConstant(name))
+    }
+
+    fn get_field_descriptor(this, anon index: u16) throws -> FieldDescriptor? {
+        guard .get_utf8(index) is Some(descriptor) else {
+            return None
+        }
+
+        return Some(FieldDescriptor::from_string(descriptor))
+    }
+
+    fn get_method_descriptor(this, anon index: u16) throws -> MethodDescriptor? {
+        guard .get_utf8(index) is Some(descriptor) else {
+            return None
+        }
+
+        return Some(MethodDescriptor::from_string(descriptor))
+    }
+}
+
+fn string_after_prefix(anon s: String, prefix: String) -> String? {
+    guard s.starts_with(prefix) else {
+        return None
+    }
+
+    return s.substring(
+        start: prefix.length()
+        length: s.length() - prefix.length()
+    )
 }

@@ -20,65 +20,6 @@ struct ClassFile {
     attributes_count: u16 = 0
     attributes: [AttributeInfo]
 
-    fn pretty_print(this) throws {
-        println("ClassFile(")
-        println("  magic: 0x{:02x}", .magic)
-        println("  minor: {}", .minor_version)
-        println("  major: {}", .major_version)
-        println("  constant_pool: [")
-        // TODO: It should be possible to destructure the pair
-        for pair in .constant_pool.iterator() {
-            let index = pair.0
-            let item = pair.1
-
-            if item is Utf8(bytes) {
-                println("    {}: ConstantPoolInfo::Utf8({})", index, .constant_pool.get_utf8(index))
-            } else {
-                println("    {}: {}", index, item)
-            }
-        }
-        println("  ]")
-        println("  access_flags: 0x{:02x} [", .access_flags)
-        println("    is_public: {}", .is_public())
-        println("    is_final: {}", .is_final())
-        println("    is_super: {}", .is_super())
-        println("    is_interface: {}", .is_interface())
-        println("    is_abstract: {}", .is_abstract())
-        println("    is_synthetic: {}", .is_synthetic())
-        println("    is_annotation: {}", .is_annotation())
-        println("    is_enum: {}", .is_enum())
-        println("    is_module: {}", .is_module())
-        println("  ]")
-        println("  this_class: {}", .this_class)
-        println("  super_class: {}", .super_class)
-        println("  interfaces: [")
-        for i in 0...interfaces_count {
-            println("    {}", .interfaces[i])
-        }
-        println("  ]")
-        println("  fields: [")
-        for i in 0...fields_count {
-            println("    {}", .fields[i])
-        }
-        println("  ]")
-        println("  methods: [")
-        for i in 0...methods_count {
-            println("    {}", .methods[i])
-        }
-        println("  ]")
-        println("  attributes: [")
-        for i in 0...attributes_count {
-            let attribute = .attributes[i]
-            if attribute is UnknownAttributeInfo {
-                println("    {}: {}", i, attribute as! UnknownAttributeInfo)
-            } else {
-                println("    {}: {}", i, attribute)
-            }
-        }
-        println("  ]")
-        println(")")
-    }
-
     fn is_public(this) -> bool {
         return (.access_flags & 0x0001) != 0
     }
