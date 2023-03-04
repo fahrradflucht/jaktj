@@ -18,7 +18,9 @@ enum Condition {
 }
 
 enum Instruction {
+    AConstNull
     ALoad(u8)
+    AReturn
     AStore(u8)
     BiPush(i8)
     Dup
@@ -27,14 +29,17 @@ enum Instruction {
     GoTo(i16)
     If(cond: Condition, branch: i16)
     IfICmp(cond: Condition, branch: u16)
+    IfNull(branch: i16)
     IInc(index: u8, constant: i8)
     ILoad(u8)
     InvokeSpecial(u16)
+    InvokeStatic(u16)
     InvokeVirtual(u16)
     IStore(u8)
     Ldc(u8)
     New(u16)
     Nop
+    Pop
     PutField(u16)
     Return
 }
