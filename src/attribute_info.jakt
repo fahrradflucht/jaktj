@@ -35,6 +35,7 @@ enum Instruction {
     InvokeSpecial(u16)
     InvokeStatic(u16)
     InvokeVirtual(u16)
+    IReturn
     IStore(u8)
     Ldc(u8)
     New(u16)
