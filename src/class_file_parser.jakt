@@ -1,4 +1,11 @@
-import attribute_info { AttributeInfo, UnknownAttributeInfo }
+import attribute_info {
+    AttributeInfo,
+    CodeAttributeInfo,
+    Condition,
+    ExceptionTableEntry,
+    Instruction,
+    UnknownAttributeInfo
+}
 import field_info { FieldInfo }
 import method_info { MethodInfo }
 import constant_pool { ConstantPool, ConstantPoolInfo, ConstantPoolTag }
@@ -57,6 +64,97 @@ struct ClassFile {
     }
 }
 
+class CodeParser {
+    data: ArraySlice<u8>
+    index: usize
+
+    public fn create(data: ArraySlice<u8>) throws -> CodeParser {
+        return CodeParser(data, index: 0)
+    }
+
+    public fn parse(mut this) throws -> [Instruction] {
+        mut instructions: [Instruction] = []
+
+        while .index < .data.size() {
+            let opcode = .take_u8()
+            match opcode {
+                0x0 => instructions.push(Instruction::Nop)
+                0x3 => instructions.push(Instruction::BiPush(0))
+                0x6 => instructions.push(Instruction::BiPush(3))
+                0x12 => instructions.push(Instruction::Ldc(.take_u8()))
+                0x1b => instructions.push(Instruction::ILoad(1))
+                0x2a => instructions.push(Instruction::ALoad(0))
+                0x2b => instructions.push(Instruction::ALoad(1))
+                0x2c => instructions.push(Instruction::ALoad(2))
+                0x2d => instructions.push(Instruction::ALoad(3))
+                0x3c => instructions.push(Instruction::IStore(1))
+                0x4b => instructions.push(Instruction::AStore(0))
+                0x4c => instructions.push(Instruction::AStore(1))
+                0x4d => instructions.push(Instruction::AStore(2))
+                0x4e => instructions.push(Instruction::AStore(3))
+                0x59 => instructions.push(Instruction::Dup)
+                0x84 => instructions.push(Instruction::IInc(index: .take_u8(), constant: .take_i8()))
+                0x9e => instructions.push(Instruction::If(cond: Condition::LessOrEqual, branch: .take_i16()))
+                0xa2 => instructions.push(Instruction::IfICmp(cond: Condition::GreaterOrEqual, branch: .take_u16()))
+                0xa7 => instructions.push(Instruction::GoTo(.take_i16()))
+                0xb1 => instructions.push(Instruction::Return)
+                0xb2 => instructions.push(Instruction::GetStatic(.take_u16()))
+                0xb4 => instructions.push(Instruction::GetField(.take_u16()))
+                0xb5 => instructions.push(Instruction::PutField(.take_u16()))
+                0xb6 => instructions.push(Instruction::InvokeVirtual(.take_u16()))
+                0xb7 => instructions.push(Instruction::InvokeSpecial(.take_u16()))
+                0xbb => instructions.push(Instruction::New(.take_u16()))
+                else => {
+                    eprintln("Unimplemented opcode: 0x{:01x}", opcode)
+                    throw Error::from_string_literal("Unimplemented opcode")
+                }
+            }
+        }
+
+        return instructions
+    }
+
+    private fn take(mut this, anon size: usize) throws -> ArraySlice<u8> {
+        let result = .data[.index..(.index + size)]
+        .index += size
+        return result
+    }
+
+    private fn take_u8(mut this) throws -> u8 {
+        return .data[.index++]
+    }
+
+    private fn take_i8(mut this) throws -> i8 {
+        // FIXME: This should not be allowed in a safe context - but given that
+        // there is no other way to do unchecked casts it is useful here.
+        let result: i8 = .data[.index++]
+
+        return result
+    }
+
+    private fn take_u16(mut this) throws -> u16 {
+        let bytes = .take(2)
+
+        mut result: u16 = 0
+        for i in 0..bytes.size() {
+            result = result << 8 | bytes[i]
+        }
+
+        return result
+    }
+
+    private fn take_i16(mut this) throws -> i16 {
+        let bytes = .take(2)
+
+        mut result: i16 = 0
+        for i in 0..bytes.size() {
+            result = result << 8 | bytes[i]
+        }
+
+        return result
+    }
+}
+
 class ClassFileParser {
     comptime MAGIC() => 0xCAFEBABEu32
     comptime MAX_SUPPORTED_MAJOR_VERSION() => 61u16 // Java 17
@@ -99,8 +197,7 @@ class ClassFileParser {
             throw Error::from_string_literal("Unexpected end of class file")
         }
 
-        let result = .data[.index++]
-        return result
+        return .data[.index++]
     }
 
     private fn take(mut this, anon size: usize) throws -> ArraySlice<u8> {
@@ -330,12 +427,59 @@ class ClassFileParser {
         let attribute_name_index = .take_u16()
         let attribute_length = .take_u32()
 
-        mut attribute: AttributeInfo = UnknownAttributeInfo(
-            attribute_name_index
-            attribute_length
-            info: .take(attribute_length as! usize).to_array()
-        )
+        guard .class_file.constant_pool.get_utf8(attribute_name_index) is Some (attribute_name) else {
+            throw Error::from_string_literal("Invalid attribute name index")
+        }
 
-        attributes.push(attribute)
+        match attribute_name {
+            "Code" => {
+                let max_stack = .take_u16()
+                let max_locals = .take_u16()
+                let code_length = .take_u32()
+                mut code_parser = CodeParser::create(data: .take(code_length as! usize))
+                let code = code_parser.parse()
+
+                let exception_table_length = .take_u16()
+                let exception_table: [ExceptionTableEntry] = []
+                .parse_exception_table(exception_table, count: exception_table_length)
+
+                let attributes_count = .take_u16()
+                let code_attributes: [AttributeInfo] = []
+                .parse_attributes(attributes: code_attributes, count: attributes_count)
+
+                attributes.push(AttributeInfo::Code(CodeAttributeInfo(
+                    attribute_name_index
+                    attribute_length
+                    max_stack
+                    max_locals
+                    code_length
+                    code
+                    exception_table_length
+                    exception_table
+                    attributes_count
+                    attributes: code_attributes
+                )))
+            }
+            else => {
+                attributes.push(AttributeInfo::Unknown(UnknownAttributeInfo(
+                    attribute_name_index
+                    attribute_length
+                    info: .take(attribute_length as! usize).to_array()
+                )))
+            }
+        }
+    }
+
+    fn parse_exception_table(mut this, mut exception_table: [ExceptionTableEntry], count: u16) throws {
+        exception_table.ensure_capacity(count as! usize)
+
+        for index in 0..count {
+            exception_table.push(ExceptionTableEntry(
+                start_pc: .take_u16()
+                end_pc: .take_u16()
+                handler_pc: .take_u16()
+                catch_type: .take_u16()
+            ))
+        }
     }
 }

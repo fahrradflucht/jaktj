@@ -1,4 +1,4 @@
-import attribute_info { AttributeInfo }
+import attribute_info { AttributeInfo, CodeAttributeInfo, ExceptionTableEntry, UnknownAttributeInfo }
 import class_file_parser { ClassFile }
 import constant_pool { ConstantPoolInfo, MethodDescriptor }
 import field_info { FieldInfo }
@@ -258,11 +258,14 @@ struct ClassFilePrettyFormatter {
         }
 
         for attribute in attributes {
-            .format_attribute(attribute)
+            match attribute {
+                Code(info) => .format_code_attribute(attribute: info),
+                Unknown(info) => .format_attribute(attribute: info),
+            }
         }
     }
 
-    private fn format_attribute(mut this, attribute: AttributeInfo) throws {
+    private fn format_attribute(mut this, attribute: UnknownAttributeInfo) throws {
         .append(format("Attribute(\n"))
         .indent += 2
         defer {
@@ -271,6 +274,62 @@ struct ClassFilePrettyFormatter {
         }
 
         .append(format("name: {}\n", .class_file.constant_pool.get_utf8(attribute.attribute_name_index)!))
+    }
+
+    private fn format_code_attribute(mut this, attribute: CodeAttributeInfo) throws {
+        .append(format("CodeAttribute(\n"))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append(")\n")
+        }
+
+        .append(format("name: {}\n", .class_file.constant_pool.get_utf8(attribute.attribute_name_index)!))
+        .append(format("max_stack: {}\n", attribute.max_stack))
+        .append(format("max_locals: {}\n", attribute.max_locals))
+        .format_code(attribute)
+        .format_exception_table(attribute)
+        .format_attributes(attributes: attribute.attributes)
+    }
+
+    private fn format_code(mut this, attribute: CodeAttributeInfo) throws {
+        .append("code: [\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for instruction in attribute.code {
+            .append(format("{:#}\n", instruction))
+        }
+    }
+
+    private fn format_exception_table(mut this, attribute: CodeAttributeInfo) throws {
+        .append("exception_table: [\n")
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append("]\n")
+        }
+
+        for exception in attribute.exception_table {
+            .format_exception_table_entry(exception)
+        }
+    }
+
+    private fn format_exception_table_entry(mut this, exception: ExceptionTableEntry) throws {
+        .append(format("Exception(\n"))
+        .indent += 2
+        defer {
+            .indent -= 2
+            .append(")\n")
+        }
+
+        .append(format("start_pc: {}\n", exception.start_pc))
+        .append(format("end_pc: {}\n", exception.end_pc))
+        .append(format("handler_pc: {}\n", exception.handler_pc))
+        .append(format("catch_type: {}\n", exception.catch_type))
     }
 
     private fn append(mut this, anon string: String) throws {

@@ -1,8 +1,62 @@
-class AttributeInfo {
+enum AttributeInfo {
+    Code(CodeAttributeInfo)
+    Unknown(UnknownAttributeInfo)
+}
+
+class BaseAttributeInfo {
     public attribute_name_index: u16
     public attribute_length: u32
 }
 
-class UnknownAttributeInfo: AttributeInfo {
+enum Condition {
+    Equal
+    NotEqual
+    Less
+    GreaterOrEqual
+    Greater
+    LessOrEqual
+}
+
+enum Instruction {
+    ALoad(u8)
+    AStore(u8)
+    BiPush(i8)
+    Dup
+    GetField(u16)
+    GetStatic(u16)
+    GoTo(i16)
+    If(cond: Condition, branch: i16)
+    IfICmp(cond: Condition, branch: u16)
+    IInc(index: u8, constant: i8)
+    ILoad(u8)
+    InvokeSpecial(u16)
+    InvokeVirtual(u16)
+    IStore(u8)
+    Ldc(u8)
+    New(u16)
+    Nop
+    PutField(u16)
+    Return
+}
+
+struct ExceptionTableEntry {
+    start_pc: u16
+    end_pc: u16
+    handler_pc: u16
+    catch_type: u16
+}
+
+class CodeAttributeInfo: BaseAttributeInfo {
+    public max_stack: u16
+    public max_locals: u16
+    public code_length: u32
+    public code: [Instruction]
+    public exception_table_length: u16
+    public exception_table: [ExceptionTableEntry]
+    public attributes_count: u16
+    public attributes: [AttributeInfo]
+}
+
+class UnknownAttributeInfo: BaseAttributeInfo {
     public info: [u8]
 }
