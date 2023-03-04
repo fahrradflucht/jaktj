@@ -127,7 +127,8 @@ class CodeParser: Parser {
             match opcode {
                 0x0 => instructions.push(Instruction::Nop)
                 0x1 => instructions.push(Instruction::AConstNull)
-                0x2 => instructions.push(Instruction::BiPush(-1i8))
+                // FIXME: Why can't I write -1 here?
+                0x2 => instructions.push(Instruction::BiPush(1i8 - 2i8))
                 0x3 => instructions.push(Instruction::BiPush(0))
                 0x4 => instructions.push(Instruction::BiPush(1))
                 0x5 => instructions.push(Instruction::BiPush(2))
