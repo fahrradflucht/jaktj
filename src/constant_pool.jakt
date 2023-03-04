@@ -20,12 +20,16 @@ enum ConstantPoolTag: u8 {
 
 enum ConstantPoolInfo {
     Utf8(tag: ConstantPoolTag, length: u16, bytes: [u8])
-    Integer(tag: ConstantPoolTag, value: u32)
+    Integer(tag: ConstantPoolTag, value: i32)
     Class(tag: ConstantPoolTag, name_index: u16)
     String(tag: ConstantPoolTag, string_index: u16)
     FieldRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
     MethodRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
+    InterfaceMethodRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)
     NameAndType(tag: ConstantPoolTag, name_index: u16, descriptor_index: u16)
+    MethodHandle(tag: ConstantPoolTag, reference_kind: u8, reference_index: u16)
+    MethodType(tag: ConstantPoolTag, descriptor_index: u16)
+    InvokeDynamic(tag: ConstantPoolTag, bootstrap_method_attr_index: u16, name_and_type_index: u16)
 }
 
 struct ClassConstant {

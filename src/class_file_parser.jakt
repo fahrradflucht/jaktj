@@ -98,6 +98,10 @@ class Parser {
         return .take_t<u32>()
     } 
 
+    public fn take_i32(mut this) throws -> i32 {
+        return .take_t<i32>()
+    }
+
     fn take_t<T>(mut this) throws -> T {
         let bytes = .take(sizeof(T))
 
@@ -243,7 +247,7 @@ class ClassFileParser: Parser {
             (ConstantPoolTag::Integer as! u8) => {
                 items[index] = ConstantPoolInfo::Integer(
                     tag: ConstantPoolTag::Integer
-                    value: .take_u32()
+                    value: .take_i32()
                 )
             }
             (ConstantPoolTag::Class as! u8) => {
@@ -272,11 +276,38 @@ class ClassFileParser: Parser {
                     name_and_type_index: .take_u16()
                 )
             }
+            (ConstantPoolTag::InterfaceMethodRef as! u8) => {
+                items[index] = ConstantPoolInfo::InterfaceMethodRef(
+                    tag: ConstantPoolTag::InterfaceMethodRef
+                    class_index: .take_u16()
+                    name_and_type_index: .take_u16()
+                )
+            }
             (ConstantPoolTag::NameAndType as! u8) => {
                 items[index] = ConstantPoolInfo::NameAndType(
                     tag: ConstantPoolTag::NameAndType
                     name_index: .take_u16()
                     descriptor_index: .take_u16()
+                )
+            }
+            (ConstantPoolTag::MethodHandle as! u8) => {
+                items[index] = ConstantPoolInfo::MethodHandle(
+                    tag: ConstantPoolTag::MethodHandle
+                    reference_kind: .take_u8()
+                    reference_index: .take_u16()
+                )
+            }
+            (ConstantPoolTag::MethodType as! u8) => {
+                items[index] = ConstantPoolInfo::MethodType(
+                    tag: ConstantPoolTag::MethodType
+                    descriptor_index: .take_u16()
+                )
+            }
+            (ConstantPoolTag::InvokeDynamic as! u8) => {
+                items[index] = ConstantPoolInfo::InvokeDynamic(
+                    tag: ConstantPoolTag::InvokeDynamic
+                    bootstrap_method_attr_index: .take_u16()
+                    name_and_type_index: .take_u16()
                 )
             }
             else => {
