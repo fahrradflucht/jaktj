@@ -64,10 +64,53 @@ struct ClassFile {
     }
 }
 
-class CodeParser {
-    data: ArraySlice<u8>
-    index: usize
+class Parser {
+    public data: ArraySlice<u8>
+    public index: usize
 
+    public fn take(mut this, anon size: usize) throws -> ArraySlice<u8> {
+        let result = .data[.index..(.index + size)]
+        .index += size
+        return result
+    }
+
+    public fn take_u8(mut this) throws -> u8 {
+        return .data[.index++]
+    }
+
+    public fn take_i8(mut this) throws -> i8 {
+        // FIXME: This should not be allowed in a safe context - but given that
+        // there is no other way to do unchecked casts it is useful here.
+        let result: i8 = .data[.index++]
+
+        return result
+    }
+
+    public fn take_u16(mut this) throws -> u16 {
+        return .take_t<u16>()
+    }
+
+    public fn take_i16(mut this) throws -> i16 {
+        return .take_t<i16>()
+    }
+
+    public fn take_u32(mut this) throws -> u32 {
+        return .take_t<u32>()
+    } 
+
+    fn take_t<T>(mut this) throws -> T {
+        let bytes = .take(sizeof(T))
+
+        mut result: T = 0
+        for i in 0..bytes.size() {
+            result = result << 8 | bytes[i]
+        }
+
+        return result
+    }
+}
+
+class CodeParser: Parser {
     public fn create(data: ArraySlice<u8>) throws -> CodeParser {
         return CodeParser(data, index: 0)
     }
@@ -113,59 +156,17 @@ class CodeParser {
 
         return instructions
     }
-
-    private fn take(mut this, anon size: usize) throws -> ArraySlice<u8> {
-        let result = .data[.index..(.index + size)]
-        .index += size
-        return result
-    }
-
-    private fn take_u8(mut this) throws -> u8 {
-        return .data[.index++]
-    }
-
-    private fn take_i8(mut this) throws -> i8 {
-        // FIXME: This should not be allowed in a safe context - but given that
-        // there is no other way to do unchecked casts it is useful here.
-        let result: i8 = .data[.index++]
-
-        return result
-    }
-
-    private fn take_u16(mut this) throws -> u16 {
-        let bytes = .take(2)
-
-        mut result: u16 = 0
-        for i in 0..bytes.size() {
-            result = result << 8 | bytes[i]
-        }
-
-        return result
-    }
-
-    private fn take_i16(mut this) throws -> i16 {
-        let bytes = .take(2)
-
-        mut result: i16 = 0
-        for i in 0..bytes.size() {
-            result = result << 8 | bytes[i]
-        }
-
-        return result
-    }
 }
 
-class ClassFileParser {
+class ClassFileParser: Parser {
     comptime MAGIC() => 0xCAFEBABEu32
     comptime MAX_SUPPORTED_MAJOR_VERSION() => 61u16 // Java 17
 
-    data: [u8]
-    index: usize
     class_file: ClassFile
 
-    public fn create(data: [u8]) throws -> ClassFileParser {
+    public fn create(data: ArraySlice<u8>) throws -> ClassFileParser {
         return ClassFileParser(
-            data
+            data,
             index: 0
             class_file: ClassFile(
                 constant_pool: ConstantPool(items: [:]),
@@ -190,42 +191,6 @@ class ClassFileParser {
         .parse_class_attributes()
 
         return .class_file
-    }
-
-    private fn next(mut this) throws -> u8 {
-        if .index >= .data.size() {
-            throw Error::from_string_literal("Unexpected end of class file")
-        }
-
-        return .data[.index++]
-    }
-
-    private fn take(mut this, anon size: usize) throws -> ArraySlice<u8> {
-        let result = .data[.index..(.index + size)]
-        .index += size
-        return result
-    }
-
-    private fn take_u16(mut this) throws -> u16 {
-        let bytes = .take(2)
-
-        mut result: u16 = 0
-        for i in 0..bytes.size() {
-            result = result << 8 | bytes[i]
-        }
-
-        return result
-    }
-
-    private fn take_u32(mut this) throws -> u32 {
-        let bytes = .take(4)
-
-        mut result: u32 = 0
-        for i in 0..bytes.size() {
-            result = result << 8 | bytes[i]
-        }
-
-        return result
     }
 
     private fn parse_magic(mut this) throws {
@@ -258,7 +223,7 @@ class ClassFileParser {
     }
 
     private fn parse_constant_pool_info(mut this, index: u16, mut items: [u16:ConstantPoolInfo]) throws {
-        let tag = .next()
+        let tag = .take_u8()
         match (tag) {
             (ConstantPoolTag::Utf8 as! u8) => {
                 let length = .take_u16()

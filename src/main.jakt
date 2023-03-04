@@ -10,9 +10,7 @@ fn main(args: [String]) throws -> c_int {
     for arg in args[1..] {
         mut file = File::open_for_reading(arg)
 
-        let data = file.read_all()
-
-        mut parser = ClassFileParser::create(data)
+        mut parser = ClassFileParser::create(data: file.read_all()[..])
         let class_file = parser.parse()
 
         println(ClassFilePrettyFormatter::create(class_file).format())
