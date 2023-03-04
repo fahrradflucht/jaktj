@@ -127,8 +127,13 @@ class CodeParser: Parser {
             match opcode {
                 0x0 => instructions.push(Instruction::Nop)
                 0x1 => instructions.push(Instruction::AConstNull)
+                0x2 => instructions.push(Instruction::BiPush(-1i8))
                 0x3 => instructions.push(Instruction::BiPush(0))
+                0x4 => instructions.push(Instruction::BiPush(1))
+                0x5 => instructions.push(Instruction::BiPush(2))
                 0x6 => instructions.push(Instruction::BiPush(3))
+                0x7 => instructions.push(Instruction::BiPush(4))
+                0x8 => instructions.push(Instruction::BiPush(5))
                 0x12 => instructions.push(Instruction::Ldc(.take_u8()))
                 0x1b => instructions.push(Instruction::ILoad(1))
                 0x2a => instructions.push(Instruction::ALoad(0))
