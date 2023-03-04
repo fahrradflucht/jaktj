@@ -21,6 +21,7 @@ enum ConstantPoolTag: u8 {
 enum ConstantPoolInfo {
     Utf8(tag: ConstantPoolTag, length: u16, bytes: [u8])
     Integer(tag: ConstantPoolTag, value: i32)
+    Float(tag: ConstantPoolTag, bits: u32)
     Class(tag: ConstantPoolTag, name_index: u16)
     String(tag: ConstantPoolTag, string_index: u16)
     FieldRef(tag: ConstantPoolTag, class_index: u16, name_and_type_index: u16)

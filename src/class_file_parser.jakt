@@ -294,6 +294,12 @@ class ClassFileParser: Parser {
                     value: .take_i32()
                 )
             }
+            (ConstantPoolTag::Float as! u8) => {
+                items[index] = ConstantPoolInfo::Float(
+                    tag: ConstantPoolTag::Float
+                    bits: .take_u32()
+                )
+            }
             (ConstantPoolTag::Class as! u8) => {
                 items[index] = ConstantPoolInfo::Class(
                     tag: ConstantPoolTag::Class
