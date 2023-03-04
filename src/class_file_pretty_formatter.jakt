@@ -51,12 +51,8 @@ struct ClassFilePrettyFormatter {
     }
 
     private fn format_constant_pool(mut this) throws {
-        .append("constant_pool: [\n",)
-        .indent += 2
-        defer {
-            .indent -= 2
-            .append("]\n")
-        }
+        .append("constant_pool: [\n",); defer { .append("]\n") }
+        .indent += 2; defer { .indent -= 2 }
 
         for pair in .class_file.constant_pool.iterator() {
             .format_constant_pool_item(index: pair.0, item: pair.1) 
