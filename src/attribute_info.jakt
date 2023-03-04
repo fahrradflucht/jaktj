@@ -18,31 +18,45 @@ enum Condition {
 }
 
 enum Instruction {
+    AALoad
+    AAStore
     AConstNull
     ALoad(u8)
+    ANewArray(u16)
     AReturn
+    ArrayLength
     AStore(u8)
+    AThrow
     BiPush(i8)
     Dup
+    CheckCast(u16)
     GetField(u16)
     GetStatic(u16)
     GoTo(i16)
     If(cond: Condition, branch: i16)
     IfICmp(cond: Condition, branch: i16)
+    IfNonNull(branch: i16)
     IfNull(branch: i16)
     IInc(index: u8, constant: i8)
     ILoad(u8)
+    InvokeDynamic(u16)
+    InvokeInterface(index: u16, count: u8)
     InvokeSpecial(u16)
     InvokeStatic(u16)
     InvokeVirtual(u16)
     IReturn
     IStore(u8)
-    Ldc(u8)
+    LdC(u8)
+    LdCW(u16)
+    MonitorEnter
+    MonitorExit
     New(u16)
     Nop
     Pop
     PutField(u16)
+    PutStatic(u16)
     Return
+    SIPush(i16)
 }
 
 struct ExceptionTableEntry {
