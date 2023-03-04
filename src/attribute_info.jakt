@@ -28,7 +28,7 @@ enum Instruction {
     GetStatic(u16)
     GoTo(i16)
     If(cond: Condition, branch: i16)
-    IfICmp(cond: Condition, branch: u16)
+    IfICmp(cond: Condition, branch: i16)
     IfNull(branch: i16)
     IInc(index: u8, constant: i8)
     ILoad(u8)
