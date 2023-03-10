@@ -42,3 +42,11 @@ After building, the program will be in the `build` directory.
 ```
 
 This will (more or less) pretty print the class file content to stdout.
+
+## License
+
+Copyright: Mathis Wiehl and contributors 2023; Licensed under the EUPL, with
+extension of article 5 (compatibility clause) to any licence for distributing
+derivative works that have been produced by the normal use of the Work as a
+library.
+
